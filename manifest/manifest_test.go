@@ -1,0 +1,113 @@
+// manifest 单测:清单校验、UI 与路由声明。
+package manifest
+
+import (
+	"errors"
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestLoadManifest(t *testing.T) {
+	dir := writePlugin(t, "demo-plugin", `{
+		"name":"demo-plugin","version":"1.0.0","binary":"demo-plugin",
+		"min_host_version":">=1.0.0 <2.0.0",
+		"services":["demo.Greeter"],
+		"ui":{"entry":"ui/index.html","routes_file":"ui/routes.json"}
+	}`, true)
+	got, err := Load(dir)
+	if err != nil {
+		t.Fatalf("Load() = %v", err)
+	}
+	if got.Name != "demo-plugin" || got.Services[0] != "demo.Greeter" {
+		t.Fatalf("manifest = %+v", got)
+	}
+}
+
+func TestLoadManifestFieldErrors(t *testing.T) {
+	dir := writePlugin(t, "Demo", `{"name":"Demo","version":"bad","binary":"missing","services":[]}`, false)
+	_, err := Load(dir)
+	var validation *ValidationError
+	if !errors.As(err, &validation) || !errors.Is(err, ErrInvalidManifest) {
+		t.Fatalf("Load() = %v, want ValidationError", err)
+	}
+	want := map[string]bool{"name": false, "version": false, "binary": false, "services": false}
+	for _, fieldErr := range validation.Errors {
+		if _, ok := want[fieldErr.Field]; ok {
+			want[fieldErr.Field] = true
+		}
+	}
+	for field, found := range want {
+		if !found {
+			t.Errorf("缺少字段 %s 的错误: %+v", field, validation.Errors)
+		}
+	}
+}
+
+func TestLoadRoutes(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "routes.json")
+	if err := os.WriteFile(path, []byte(`[{"path":"/home","name":"Home"}]`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	routes, err := LoadRoutes(path)
+	if err != nil {
+		t.Fatalf("LoadRoutes() = %v", err)
+	}
+	if len(routes) != 1 || routes[0].Path != "/home" {
+		t.Fatalf("routes = %+v", routes)
+	}
+}
+
+func TestDiscover(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"alpha-plugin", "beta-plugin"} {
+		target := filepath.Join(root, name)
+		writePluginAt(t, target, name, `{"name":"`+name+`","version":"1.0.0","binary":"`+name+`","services":["`+name+`.Service"]}`, true)
+	}
+	manifests, err := Discover(root)
+	if err != nil {
+		t.Fatalf("Discover() = %v", err)
+	}
+	if len(manifests) != 2 || manifests[0].Name != "alpha-plugin" || manifests[1].Name != "beta-plugin" {
+		t.Fatalf("manifests = %+v", manifests)
+	}
+}
+
+func TestCheckHostVersion(t *testing.T) {
+	loaded := &Manifest{MinHostVersion: ">=1.2.0 <2.0.0"}
+	if err := loaded.CheckHostVersion("1.5.0"); err != nil {
+		t.Fatalf("CheckHostVersion(1.5.0) = %v", err)
+	}
+	if err := loaded.CheckHostVersion("0.9.0"); !errors.Is(err, ErrHostVersionIncompatible) {
+		t.Fatalf("CheckHostVersion(0.9.0) = %v, want ErrHostVersionIncompatible", err)
+	}
+}
+
+func writePlugin(t *testing.T, name, data string, complete bool) string {
+	t.Helper()
+	dir := filepath.Join(t.TempDir(), name)
+	writePluginAt(t, dir, name, data, complete)
+	return dir
+}
+
+func writePluginAt(t *testing.T, dir, binaryName, data string, complete bool) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Join(dir, "ui"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, FileName), []byte(data), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if complete {
+		if err := os.WriteFile(filepath.Join(dir, binaryName), []byte("bin"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "ui", "index.html"), []byte("ui"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "ui", "routes.json"), []byte(`[]`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
