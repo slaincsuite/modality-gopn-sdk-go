@@ -12,7 +12,7 @@ gopn 启动,并以 gRPC 暴露 proto 生成的服务。SDK 提供进程握手、
 ## 安装
 
 ```sh
-go get github.com/slaincsuite/modality-gopn-sdk-go
+go get github.com/slaincsuite/modality-gopn-sdk-go@v0.1.1
 ```
 
 ## 最小插件
@@ -71,13 +71,23 @@ response, err := client.Call(ctx, "module.registry.read", nil)
 
 ## 插件包
 
+插件包以 `.mgpn` 压缩包交付,内含以下目录结构:
+
 ```text
 demo-plugin/
-├── plugin.json
-├── demo-plugin
-└── ui/
+├── plugin.json          # 清单(项目根目录)
+├── src/                 # Go 源码
+│   ├── main.go          # 进程入口(src/apps/main.go)
+│   └── starter.go       # 业务实现
+└── ui/                  # 前端工程(可选)
+    ├── index.html       # SPA 入口
+    ├── src/
+    │   └── routes.json  # 前端路由声明
+    └── assets/          # 构建产物
 ```
 
+`plugin.json` 位于项目根目录;
+`ui/routes_file` 引用 `ui/src/routes.json`。
 `plugin.json` 的 `services` 必须与 `service.Service.Name` 完全一致;
 `grants` 只是能力申请,不代表宿主授权结果。发布前使用 `manifest.Load`
 校验目录。
