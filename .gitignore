@@ -1,0 +1,36 @@
+# Binaries / build output
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/bin/
+/build/
+/dist/
+/tmp/
+
+# Go tooling (tests, coverage, profiling, debugger)
+*.test
+*.out
+*.prof
+*.pprof
+coverage.html
+__debug_bin*
+
+# Local env & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Logs
+*.log
+/logs/
+
+# Editors & OS
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
