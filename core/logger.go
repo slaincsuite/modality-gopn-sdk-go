@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 )
 
 // LogLevel 控制默认日志实现的最低输出级别。
@@ -28,11 +29,14 @@ type Logger interface {
 	Infof(format string, args ...any)
 	Warnf(format string, args ...any)
 	Errorf(format string, args ...any)
+	// With 返回携带结构化键值对的子日志器;实现应保留原有上下文。
+	With(kv ...any) Logger
 }
 
 type standardLogger struct {
 	level  LogLevel
 	logger *log.Logger
+	fields []any
 }
 
 // NewLogger 创建带级别过滤的默认日志器。
@@ -67,11 +71,35 @@ func (l *standardLogger) Errorf(format string, args ...any) {
 	l.write(LogLevelError, "ERROR", format, args...)
 }
 
+func (l *standardLogger) With(kv ...any) Logger {
+	return &standardLogger{
+		level:  l.level,
+		logger: l.logger,
+		fields: append(append([]any{}, l.fields...), kv...),
+	}
+}
+
 func (l *standardLogger) write(level LogLevel, label, format string, args ...any) {
 	if level < l.level {
 		return
 	}
-	l.logger.Printf("["+label+"] "+format, args...)
+	msg := "[" + label + "] " + format
+	if len(l.fields) > 0 {
+		msg += " " + formatPairs(l.fields)
+	}
+	l.logger.Printf(msg, args...)
+}
+
+func formatPairs(kv []any) string {
+	parts := make([]string, 0, (len(kv)+1)/2)
+	for i := 0; i < len(kv); i += 2 {
+		if i+1 < len(kv) {
+			parts = append(parts, fmt.Sprintf("%v=%v", kv[i], kv[i+1]))
+		} else {
+			parts = append(parts, fmt.Sprintf("%v", kv[i]))
+		}
+	}
+	return strings.Join(parts, " ")
 }
 
 type nopLogger struct{}
@@ -83,6 +111,7 @@ func (nopLogger) Debugf(string, ...any) {}
 func (nopLogger) Infof(string, ...any)  {}
 func (nopLogger) Warnf(string, ...any)  {}
 func (nopLogger) Errorf(string, ...any) {}
+func (nopLogger) With(...any) Logger    { return nopLogger{} }
 
 // String 返回日志级别的可读名称。
 func (l LogLevel) String() string {

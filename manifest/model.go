@@ -26,8 +26,28 @@ type Manifest struct {
 	Binary         string   `json:"binary"`
 	MinHostVersion string   `json:"min_host_version,omitempty"`
 	Services       []string `json:"services"`
+	// Grants 插件申请的宿主能力列表;宿主逐项重新鉴权,SDK 只做格式校验。
+	Grants []string `json:"grants,omitempty"`
+	// Extensions 插件贡献的扩展实现;服务名必须出现在 Services。
+	Extensions []Extension `json:"extensions,omitempty"`
 	UI             *UI      `json:"ui,omitempty"`
 	Dir            string   `json:"-"`
+}
+
+// Extension 插件扩展实现声明。
+type Extension struct {
+	// Name 扩展实现名。
+	Name string `json:"name"`
+	// Point 宿主扩展点名。
+	Point string `json:"point"`
+	// DisplayName 展示名。
+	DisplayName string `json:"displayName,omitempty"`
+	// Description 说明。
+	Description string `json:"description,omitempty"`
+	// Priority 多实例优先级,大者先执行。
+	Priority int `json:"priority,omitempty"`
+	// ServiceName 实现 RPC 服务名。
+	ServiceName string `json:"service_name"`
 }
 
 // UI 插件前端资源声明。
@@ -157,6 +177,8 @@ func (m *Manifest) Validate() error {
 	}
 	fields = append(fields, validateBinary(m.Dir, m.Binary)...)
 	fields = append(fields, validateServices(m.Services)...)
+	fields = append(fields, validateGrants(m.Grants)...)
+	fields = append(fields, validateExtensions(m.Services, m.Extensions)...)
 	fields = append(fields, validateUI(m.Dir, m.UI)...)
 	if len(fields) > 0 {
 		return &ValidationError{Errors: fields}
@@ -214,6 +236,52 @@ func validateServices(services []string) []FieldError {
 			fields = append(fields, FieldError{Field: field, Message: "重复: " + service})
 		}
 		seen[service] = struct{}{}
+	}
+	return fields
+}
+
+func validateGrants(grants []string) []FieldError {
+	var fields []FieldError
+	seen := make(map[string]struct{}, len(grants))
+	for i, grant := range grants {
+		field := fmt.Sprintf("grants[%d]", i)
+		if grant == "" {
+			fields = append(fields, FieldError{Field: field, Message: "不能为空"})
+			continue
+		}
+		if _, exists := seen[grant]; exists {
+			fields = append(fields, FieldError{Field: field, Message: "重复: " + grant})
+		}
+		seen[grant] = struct{}{}
+	}
+	return fields
+}
+
+func validateExtensions(services []string, extensions []Extension) []FieldError {
+	var fields []FieldError
+	declared := make(map[string]struct{}, len(services))
+	for _, s := range services {
+		declared[s] = struct{}{}
+	}
+	seen := make(map[string]struct{}, len(extensions))
+	for i, ext := range extensions {
+		field := fmt.Sprintf("extensions[%d]", i)
+		if ext.Name == "" {
+			fields = append(fields, FieldError{Field: field + ".name", Message: "必填"})
+		}
+		if ext.Point == "" {
+			fields = append(fields, FieldError{Field: field + ".point", Message: "必填"})
+		}
+		if ext.ServiceName == "" {
+			fields = append(fields, FieldError{Field: field + ".service_name", Message: "必填"})
+		} else if _, ok := declared[ext.ServiceName]; !ok {
+			fields = append(fields, FieldError{Field: field + ".service_name", Message: "未在 services 声明: " + ext.ServiceName})
+		}
+		key := ext.Point + "/" + ext.Name
+		if _, exists := seen[key]; exists {
+			fields = append(fields, FieldError{Field: field, Message: "重复: " + key})
+		}
+		seen[key] = struct{}{}
 	}
 	return fields
 }

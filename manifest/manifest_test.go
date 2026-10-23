@@ -84,6 +84,47 @@ func TestCheckHostVersion(t *testing.T) {
 	}
 }
 
+func TestLoadManifestGrantsAndExtensions(t *testing.T) {
+	dir := writePlugin(t, "demo-plugin", `{
+		"name":"demo-plugin","version":"1.0.0","binary":"demo-plugin",
+		"services":["demo.Greeter"],
+		"grants":["settings.snapshot.read","upms.user.list"],
+		"extensions":[{"name":"greeter","point":"notice.channel","service_name":"demo.Greeter"}]
+	}`, true)
+	got, err := Load(dir)
+	if err != nil {
+		t.Fatalf("Load() = %v", err)
+	}
+	if len(got.Grants) != 2 {
+		t.Fatalf("grants = %+v", got.Grants)
+	}
+	if len(got.Extensions) != 1 || got.Extensions[0].Point != "notice.channel" {
+		t.Fatalf("extensions = %+v", got.Extensions)
+	}
+}
+
+func TestLoadManifestRejectsUnknownExtensionService(t *testing.T) {
+	dir := writePlugin(t, "demo-plugin", `{
+		"name":"demo-plugin","version":"1.0.0","binary":"demo-plugin",
+		"services":["demo.Greeter"],
+		"extensions":[{"name":"greeter","point":"notice.channel","service_name":"missing.Service"}]
+	}`, true)
+	_, err := Load(dir)
+	var validation *ValidationError
+	if !errors.As(err, &validation) {
+		t.Fatalf("Load() = %v, want ValidationError", err)
+	}
+	found := false
+	for _, fieldErr := range validation.Errors {
+		if fieldErr.Field == "extensions[0].service_name" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("errors = %+v", validation.Errors)
+	}
+}
+
 func writePlugin(t *testing.T, name, data string, complete bool) string {
 	t.Helper()
 	dir := filepath.Join(t.TempDir(), name)

@@ -33,6 +33,10 @@ func (l *recordingLogger) Errorf(format string, args ...any) {
 	l.record("error", format, args...)
 }
 
+func (l *recordingLogger) With(_ ...any) core.Logger {
+	return l
+}
+
 func (l *recordingLogger) record(level, format string, args ...any) {
 	l.mu.Lock()
 	defer l.mu.Unlock()

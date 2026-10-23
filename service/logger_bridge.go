@@ -57,7 +57,7 @@ func (l *hclogAdapter) With(args ...any) hclog.Logger {
 	merged := make([]any, 0, len(l.args)+len(args))
 	merged = append(merged, l.args...)
 	merged = append(merged, args...)
-	return &hclogAdapter{logger: l.logger, name: l.name, args: merged, level: l.level}
+	return &hclogAdapter{logger: l.logger.With(merged...), name: l.name, args: merged, level: l.level}
 }
 
 func (l *hclogAdapter) Named(name string) hclog.Logger {
