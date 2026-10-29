@@ -3,5 +3,5 @@ package core
 
 const (
 	// SDKVersion 当前 SDK 版本。
-	SDKVersion = "0.1.2"
+	SDKVersion = "0.1.3"
 )

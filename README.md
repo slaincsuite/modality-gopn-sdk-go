@@ -15,7 +15,7 @@ gopn 启动;可暴露 gRPC 服务,也可只提供**应用与操作目录(action.
 ## 安装
 
 ```sh
-go get github.com/slaincsuite/modality-gopn-sdk-go@v0.1.2
+go get github.com/slaincsuite/modality-gopn-sdk-go@v0.1.3
 ```
 
 ## 最小插件
