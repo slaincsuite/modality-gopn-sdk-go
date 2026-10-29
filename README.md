@@ -1,8 +1,11 @@
 # modality Plugin SDK
 
 modality Go 插件 SDK。插件是独立二进制进程,由 modality 宿主通过
-gopn 启动,并以 gRPC 暴露 proto 生成的服务。SDK 提供进程握手、服务注册、
-日志桥接、清单校验、扩展点声明与默认拒绝的宿主能力调用。
+gopn 启动;可暴露 gRPC 服务,也可只提供**应用与操作目录(action.json)/UI**
+(零服务插件合法,仍以 go-plugin 握手与内建健康服务常驻)。SDK 提供进程握手、
+服务注册、日志桥接、清单校验、扩展点声明与默认拒绝的宿主能力调用。
+
+> 宿主侧能力通道(broker)尚未实现:`grants` 声明暂不会被授予或调用。
 
 ## 环境要求
 
@@ -12,7 +15,7 @@ gopn 启动,并以 gRPC 暴露 proto 生成的服务。SDK 提供进程握手、
 ## 安装
 
 ```sh
-go get github.com/slaincsuite/modality-gopn-sdk-go@v0.1.1
+go get github.com/slaincsuite/modality-gopn-sdk-go@v0.1.2
 ```
 
 ## 最小插件
@@ -76,6 +79,7 @@ response, err := client.Call(ctx, "module.registry.read", nil)
 ```text
 demo-plugin/
 ├── plugin.json          # 清单(项目根目录)
+├── action.json          # 操作目录:应用、操作与数据源声明(可选)
 ├── src/                 # Go 源码
 │   ├── main.go          # 进程入口(src/apps/main.go)
 │   └── starter.go       # 业务实现
@@ -91,6 +95,36 @@ demo-plugin/
 `plugin.json` 的 `services` 必须与 `service.Service.Name` 完全一致;
 `grants` 只是能力申请,不代表宿主授权结果。发布前使用 `manifest.Load`
 校验目录。
+
+## 应用与操作声明
+
+`action.json` 声明插件对宿主暴露的应用、操作与数据源,是宿主策略
+(「服务」= 应用编码,「操作」= 操作名)与插件前端权限的单一来源:
+
+```json
+{
+  "apps": [
+    {
+      "code": "demo-plugin",
+      "name": "示例应用",
+      "actions": [
+        { "name": "record-list", "title": "查询记录列表", "kind": "list", "resource": "record" }
+      ],
+      "resources": [
+        { "code": "record", "name": "记录" }
+      ]
+    }
+  ]
+}
+```
+
+- 应用编码与操作名 kebab-case,合并为宿主功能名 `应用编码.操作名`;
+- `kind` 取 `read` / `write` / `list` / `other` 四类
+  (插件前端按类约定组织界面:读=打开/查看,写=编辑,列表=看列表/导出,其他=其他入口);
+- 插件前端只从宿主 `GET /open-api/v1/upms/policies/my-actions?app=<应用编码>`
+  取权限,不得内置权限判断或另抄操作清单;
+- `plugin.json` 的 `actions` 字段可指向其他路径,缺省自动探测根目录
+  `action.json`;打包前用 `manifest.LoadActions` 在 Go 侧校验。
 
 ## 包索引
 

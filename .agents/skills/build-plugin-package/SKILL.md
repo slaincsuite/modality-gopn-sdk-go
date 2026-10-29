@@ -11,9 +11,16 @@ description: Build and validate a distributable modality plugin directory.
    values and is non-empty and unique.
 4. Add `ui/index.html` only when `ui` is declared; add `routes.json` only when
    it is valid JSON with `path` and `name` on every entry.
-5. Validate with `manifest.Load(dir)` and
+5. Declare applications, actions, and resources in `action.json` beside
+   `plugin.json` (the `actions` field may point elsewhere). Validate it with
+   `manifest.LoadActions(path)` when it exists: application codes and action
+   names are kebab-case and unique, `kind` is one of `read|write|list|other`,
+   and every `resource` references a declared `resources[].code`. The same
+   file is the plugin frontend's permission source; never copy the action
+   list into the frontend.
+6. Validate with `manifest.Load(dir)` (it loads `action.json` too) and
    `Manifest.CheckHostVersion(hostVersion)`; inspect `ValidationError`
    field paths on failure.
-6. Run the plugin package through the sample subprocess test pattern or a host
+7. Run the plugin package through the sample subprocess test pattern or a host
    launch test before distribution.
-7. Do not commit compiled binaries; ship them as release assets.
+8. Do not commit compiled binaries; ship them as release assets.

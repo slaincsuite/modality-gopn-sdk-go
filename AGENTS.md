@@ -42,7 +42,7 @@ modality-gopn-sdk-go/
 ├── AGENTS.md / README.md / Makefile / go.mod
 ├── service/          # Plugin, Service, Serve, gRPC bridge, logger adapter
 ├── core/             # handshake, config, logger, SDK version
-├── manifest/         # plugin.json / routes.json models and validation
+├── manifest/         # plugin.json / action.json / routes.json models and validation
 ├── extensionpoint/   # plugin-side extension declarations
 ├── host/             # capability authorization and authorized host calls
 └── .agents/          # repository-local agent knowledge
@@ -87,6 +87,7 @@ manifest ──▶ core-compatible data models only
 | --- | --- |
 | [2026-10-23-sdk-bootstrap.md](.agents/notes/2026-10-23-sdk-bootstrap.md) | initial SDK scope and layout |
 | [2026-10-23-plugin-system.md](.agents/notes/2026-10-23-plugin-system.md) | authorization, extension point, and root layout decisions |
+| [2026-10-29-action-catalog.md](.agents/notes/2026-10-29-action-catalog.md) | action.json contract: types, loading, and validation parity with the host |
 
 ## Commands
 
