@@ -4,8 +4,6 @@ package service
 import "errors"
 
 var (
-	// ErrNoServices 表示插件没有注册任何 gRPC 服务。
-	ErrNoServices = errors.New("modality: 未注册服务")
 	// ErrDuplicateService 表示服务名重复。
 	ErrDuplicateService = errors.New("modality: 服务名重复")
 	// ErrInvalidService 表示服务名为空或注册函数为空。

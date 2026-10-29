@@ -62,9 +62,27 @@ func TestPluginRegisterDuplicate(t *testing.T) {
 	}
 }
 
-func TestPluginServeNoServices(t *testing.T) {
-	if err := NewPlugin().Serve(); !errors.Is(err, ErrNoServices) {
-		t.Fatalf("Serve() = %v, want ErrNoServices", err)
+// TestPluginServeWithoutRPC 零服务插件(仅应用/UI)仍须完成 go-plugin 握手并常驻。
+func TestPluginServeWithoutRPC(t *testing.T) {
+	serveCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	reattachCh := make(chan *plugin.ReattachConfig, 1)
+	serveErr := make(chan error, 1)
+	pluginInstance := NewPlugin(
+		WithLogger(core.NopLogger()),
+		WithTestConfig(&plugin.ServeTestConfig{
+			Context:          serveCtx,
+			ReattachConfigCh: reattachCh,
+			CloseCh:          make(chan struct{}),
+		}),
+	)
+	go func() { serveErr <- pluginInstance.Serve() }()
+	select {
+	case <-reattachCh:
+	case err := <-serveErr:
+		t.Fatalf("Serve() 提前返回: %v", err)
+	case <-time.After(3 * time.Second):
+		t.Fatal("等待握手配置超时")
 	}
 }
 

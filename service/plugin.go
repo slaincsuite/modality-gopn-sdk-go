@@ -81,11 +81,10 @@ func (p *Plugin) Services() []Service {
 }
 
 // Serve 注册服务并阻塞运行;进程退出或 go-plugin 结束时返回。
+// 允许零服务:只提供应用与操作目录(action.json)/UI 的插件合法,
+// 此时仍以 go-plugin 握手 + 内建健康服务常驻,供宿主管理生命周期。
 func (p *Plugin) Serve() error {
 	services := p.Services()
-	if len(services) == 0 {
-		return ErrNoServices
-	}
 	if err := p.config.Validate(); err != nil {
 		return err
 	}

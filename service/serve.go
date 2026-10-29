@@ -2,7 +2,6 @@
 package service
 
 import (
-	"errors"
 	"fmt"
 	"os"
 )
@@ -22,9 +21,6 @@ func Serve(services []Service, options ...Option) error {
 func MustServe(services []Service, options ...Option) {
 	if err := Serve(services, options...); err != nil {
 		fmt.Fprintf(os.Stderr, "modality plugin: %v\n", err)
-		if errors.Is(err, ErrNoServices) {
-			os.Exit(2)
-		}
 		os.Exit(1)
 	}
 }
