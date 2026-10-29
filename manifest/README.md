@@ -55,3 +55,7 @@ for _, app := range apps {
 | `App` / `Action` / `Resource` | 应用、操作与数据源的声明模型 |
 | `OpKindRead` / `OpKindWrite` / `OpKindList` / `OpKindOther` | 四类操作枚举 |
 | `ActionFileName` | 操作目录缺省文件名 `action.json` |
+
+路由声明(`routes.json`)按宿主区域 `view`(console / uc / index)声明,
+可选 `app`+`action`(成对,宿主按权限过滤菜单),`menu` 存在才进宿主导航;
+插件 UI 按 view 输出 ESM 模块(`<挂载路径>/<view>/index.js`)。

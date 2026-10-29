@@ -47,7 +47,7 @@ func TestLoadManifestFieldErrors(t *testing.T) {
 func TestLoadRoutes(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "routes.json")
-	if err := os.WriteFile(path, []byte(`[{"path":"/home","name":"Home"}]`), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte(`[{"view":"console","path":"/home","name":"Home","app":"demo-app","action":"demo-list"}]`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	routes, err := LoadRoutes(path)
@@ -56,6 +56,22 @@ func TestLoadRoutes(t *testing.T) {
 	}
 	if len(routes) != 1 || routes[0].Path != "/home" {
 		t.Fatalf("routes = %+v", routes)
+	}
+	if routes[0].View != ViewConsole || routes[0].App != "demo-app" || routes[0].Action != "demo-list" {
+		t.Fatalf("扩展字段不符: %+v", routes[0])
+	}
+
+	// 契约校验:view 非法、app/action 未成对均拒绝。
+	for _, bad := range []string{
+		`[{"view":"admin","path":"/a","name":"A"}]`,
+		`[{"view":"console","path":"/a","name":"A","app":"demo-app"}]`,
+	} {
+		if err := os.WriteFile(path, []byte(bad), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := LoadRoutes(path); err == nil {
+			t.Fatalf("非法路由应被拒绝: %s", bad)
+		}
 	}
 }
 
