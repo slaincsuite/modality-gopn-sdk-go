@@ -30,8 +30,12 @@ type Manifest struct {
 	Grants []string `json:"grants,omitempty"`
 	// Extensions 插件贡献的扩展实现;服务名必须出现在 Services。
 	Extensions []Extension `json:"extensions,omitempty"`
-	UI             *UI      `json:"ui,omitempty"`
-	Dir            string   `json:"-"`
+	// Actions 操作目录文件路径(相对插件目录);缺省探测同目录 action.json。
+	Actions string `json:"actions,omitempty"`
+	// Apps 由 action.json 加载的应用与操作声明(不是 plugin.json 的字段)。
+	Apps []App  `json:"-"`
+	UI   *UI    `json:"ui,omitempty"`
+	Dir  string `json:"-"`
 }
 
 // Extension 插件扩展实现声明。
@@ -102,6 +106,9 @@ func Load(dir string) (*Manifest, error) {
 	}
 	manifest.Dir = absolute
 	if err := manifest.Validate(); err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrInvalidManifest, err)
+	}
+	if err := manifest.loadActions(absolute); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidManifest, err)
 	}
 	return &manifest, nil
@@ -179,6 +186,7 @@ func (m *Manifest) Validate() error {
 	fields = append(fields, validateServices(m.Services)...)
 	fields = append(fields, validateGrants(m.Grants)...)
 	fields = append(fields, validateExtensions(m.Services, m.Extensions)...)
+	fields = append(fields, validateActionsFile(m.Dir, m.Actions)...)
 	fields = append(fields, validateUI(m.Dir, m.UI)...)
 	if len(fields) > 0 {
 		return &ValidationError{Errors: fields}
@@ -191,7 +199,7 @@ func validateName(name, dir string) []FieldError {
 		return []FieldError{{Field: "name", Message: "必填"}}
 	}
 	if !isKebabCase(name) {
-		return []FieldError{{Field: "name", Message: "须为 kebab-case"}}
+		return []FieldError{{Field: "name", Message: msgKebab}}
 	}
 	if dir != "" && filepath.Base(dir) != name {
 		return []FieldError{{Field: "name", Message: "须与插件目录名一致"}}
